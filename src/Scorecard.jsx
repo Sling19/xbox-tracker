@@ -1,11 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
-export default function Scorecard() {
-  const [weeks, setWeeks] = useState(() => {
-    const saved = localStorage.getItem("scorecard");
-    return saved ? JSON.parse(saved) : [];
-  });
-
+export default function Scorecard({ weeks, setWeeks }) {
   const [form, setForm] = useState({
     week: "",
     unitsStarted: "",
@@ -16,36 +11,21 @@ export default function Scorecard() {
     unitsListed: "",
     unitsSold: "",
     avgDays: "",
-    avgPrice: ""
+    avgPrice: "",
   });
 
   useEffect(() => {
+    // persist handled by App.jsx; this is just a safety mirror
     localStorage.setItem("scorecard", JSON.stringify(weeks));
   }, [weeks]);
 
   const num = (v) => (v === "" || v === null ? 0 : Number(v));
 
-  const completionRate = (() => {
-    const s = num(form.unitsStarted);
-    const c = num(form.unitsCompleted);
-    return s > 0 ? (c / s) * 100 : 0;
-  })();
-
-  const successRate = (() => {
-    const r = num(form.revived);
-    const p = num(form.parted);
-    const total = r + p;
-    return total > 0 ? (r / total) * 100 : 0;
-  })();
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
-  };
+  const handleChange = (e) =>
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Store raw inputs; compute percentages on render so math always reflects the data
     setWeeks((w) => [
       ...w,
       {
@@ -59,7 +39,7 @@ export default function Scorecard() {
         unitsListed: num(form.unitsListed),
         unitsSold: num(form.unitsSold),
         avgDays: Number(form.avgDays) || 0,
-        avgPrice: Number(form.avgPrice) || 0
+        avgPrice: Number(form.avgPrice) || 0,
       },
     ]);
     setForm({
@@ -72,16 +52,11 @@ export default function Scorecard() {
       unitsListed: "",
       unitsSold: "",
       avgDays: "",
-      avgPrice: ""
+      avgPrice: "",
     });
   };
 
-  const deleteRow = (id) => {
-    setWeeks((w) => w.filter((row) => row.id !== id));
-  };
-
   const pct = (n) => `${(Math.round(n * 10) / 10).toFixed(1)}%`;
-
   const computedFor = (row) => {
     const completion =
       row.unitsStarted > 0
@@ -94,127 +69,60 @@ export default function Scorecard() {
     return { completion, success };
   };
 
+  // Summary for the scorecard tab
+  const totals = weeks.reduce(
+    (acc, w) => {
+      acc.sold += w.unitsSold || 0;
+      acc.listed += w.unitsListed || 0;
+      acc.hours.push(w.avgHours || 0);
+      acc.prices.push(w.avgPrice || 0);
+      return acc;
+    },
+    { sold: 0, listed: 0, hours: [], prices: [] }
+  );
+  const avg = (arr) =>
+    arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : "0";
+
   return (
     <div className="bg-white p-4 shadow-md rounded-lg">
       <h2 className="text-2xl font-bold mb-4">📊 Weekly Scorecard</h2>
 
-      {/* Live KPI preview based on the current form */}
+      {/* Scorecard Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <div className="p-3 rounded border">
-          <div className="text-xs text-gray-500">Completion %</div>
-          <div className="text-xl font-semibold">{pct(completionRate)}</div>
-        </div>
-        <div className="p-3 rounded border">
-          <div className="text-xs text-gray-500">Success %</div>
-          <div className="text-xl font-semibold">{pct(successRate)}</div>
-        </div>
-        <div className="p-3 rounded border">
-          <div className="text-xs text-gray-500">Units Sold</div>
-          <div className="text-xl font-semibold">{num(form.unitsSold)}</div>
-        </div>
-        <div className="p-3 rounded border">
-          <div className="text-xs text-gray-500">Avg Hours</div>
-          <div className="text-xl font-semibold">
-            {(Number(form.avgHours) || 0).toFixed(1)}
-          </div>
-        </div>
+        <KPI label="Weeks Logged" value={weeks.length} />
+        <KPI label="Units Sold (sum)" value={totals.sold} />
+        <KPI label="Avg Hours/Unit" value={avg(totals.hours)} />
+        <KPI label="Avg Sale Price $" value={avg(totals.prices)} />
       </div>
 
       {/* Entry form */}
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-6">
-        <input
-          name="week"
-          placeholder="Week label (e.g. 2025-W35)"
-          value={form.week}
-          onChange={handleChange}
-          className="p-2 border rounded col-span-1 md:col-span-2"
-        />
-        <input
-          name="unitsStarted"
-          type="number"
-          placeholder="Units Started"
-          value={form.unitsStarted}
-          onChange={handleChange}
-          className="p-2 border rounded"
-          min="0"
-        />
-        <input
-          name="unitsCompleted"
-          type="number"
-          placeholder="Units Completed"
-          value={form.unitsCompleted}
-          onChange={handleChange}
-          className="p-2 border rounded"
-          min="0"
-        />
-        <input
-          name="avgHours"
-          type="number"
-          step="0.1"
-          placeholder="Avg Hours/Unit"
-          value={form.avgHours}
-          onChange={handleChange}
-          className="p-2 border rounded"
-          min="0"
-        />
-
-        <input
-          name="revived"
-          type="number"
-          placeholder="Revived"
-          value={form.revived}
-          onChange={handleChange}
-          className="p-2 border rounded"
-          min="0"
-        />
-        <input
-          name="parted"
-          type="number"
-          placeholder="Parted"
-          value={form.parted}
-          onChange={handleChange}
-          className="p-2 border rounded"
-          min="0"
-        />
-        <input
-          name="unitsListed"
-          type="number"
-          placeholder="Units Listed"
-          value={form.unitsListed}
-          onChange={handleChange}
-          className="p-2 border rounded"
-          min="0"
-        />
-        <input
-          name="unitsSold"
-          type="number"
-          placeholder="Units Sold"
-          value={form.unitsSold}
-          onChange={handleChange}
-          className="p-2 border rounded"
-          min="0"
-        />
-        <input
-          name="avgDays"
-          type="number"
-          step="0.1"
-          placeholder="Avg Days to Sell"
-          value={form.avgDays}
-          onChange={handleChange}
-          className="p-2 border rounded"
-          min="0"
-        />
-        <input
-          name="avgPrice"
-          type="number"
-          step="0.01"
-          placeholder="Avg Sale Price $"
-          value={form.avgPrice}
-          onChange={handleChange}
-          className="p-2 border rounded"
-          min="0"
-        />
-
+        {[
+          ["week", "Week label (e.g. 2025-W35)"],
+          ["unitsStarted", "Units Started"],
+          ["unitsCompleted", "Units Completed"],
+          ["avgHours", "Avg Hours/Unit"],
+          ["revived", "Revived"],
+          ["parted", "Parted"],
+          ["unitsListed", "Units Listed"],
+          ["unitsSold", "Units Sold"],
+          ["avgDays", "Avg Days to Sell"],
+          ["avgPrice", "Avg Sale Price $"],
+        ].map(([name, ph]) => (
+          <input
+            key={name}
+            name={name}
+            type={
+              ["week"].includes(name) ? "text" :
+                ["avgHours", "avgDays", "avgPrice"].includes(name) ? "number" : "number"
+            }
+            step={["avgHours", "avgDays", "avgPrice"].includes(name) ? "0.1" : undefined}
+            placeholder={ph}
+            value={form[name]}
+            onChange={handleChange}
+            className="p-2 border rounded"
+          />
+        ))}
         <button
           type="submit"
           className="md:col-span-5 bg-green-600 text-white py-2 rounded font-semibold"
@@ -243,7 +151,6 @@ export default function Scorecard() {
                 <th className="p-2 text-right">Sold</th>
                 <th className="p-2 text-right">Avg Days</th>
                 <th className="p-2 text-right">Avg Price $</th>
-                <th className="p-2">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -263,14 +170,6 @@ export default function Scorecard() {
                     <td className="p-2 text-right">{w.unitsSold}</td>
                     <td className="p-2 text-right">{w.avgDays.toFixed(1)}</td>
                     <td className="p-2 text-right">{w.avgPrice.toFixed(2)}</td>
-                    <td className="p-2">
-                      <button
-                        onClick={() => deleteRow(w.id)}
-                        className="px-2 py-1 text-red-700 border border-red-300 rounded"
-                      >
-                        Delete
-                      </button>
-                    </td>
                   </tr>
                 );
               })}
@@ -278,6 +177,15 @@ export default function Scorecard() {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+function KPI({ label, value }) {
+  return (
+    <div className="p-3 rounded border text-center">
+      <div className="text-xs text-gray-500">{label}</div>
+      <div className="text-xl font-semibold">{value}</div>
     </div>
   );
 }
