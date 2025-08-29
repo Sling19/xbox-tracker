@@ -36,7 +36,7 @@ function defaultTasks() {
   return o;
 }
 
-export default function UnitTable({ units, onUpdateUnit }) {
+export default function UnitTable({ units, onUpdateUnit, onDeleteUnit }) {
   if (!Array.isArray(units) || units.length === 0) {
     return <p>No units yet. Add one above.</p>;
   }
@@ -44,6 +44,8 @@ export default function UnitTable({ units, onUpdateUnit }) {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({});
   const [openChecklistId, setOpenChecklistId] = useState(null);
+
+
 
   const startEdit = (u) => {
     setEditingId(u.id);
@@ -301,6 +303,17 @@ export default function UnitTable({ units, onUpdateUnit }) {
                       >
                         Checklist
                       </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Delete ${u.id} permanently? This cannot be undone (unless you use Undo in the toolbar).`)) {
+                            onDeleteUnit(u.id);
+                          }
+                        }}
+                        className="px-2 py-1 bg-red-600 text-white rounded"
+                      >
+                        Delete
+                      </button>
+
                     </div>
                   </td>
                 </tr>
